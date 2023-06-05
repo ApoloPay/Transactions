@@ -15,6 +15,7 @@ class Transaction(models.Model):
     description=models.TextField(default=None, null=False,blank =True)
     status =models.CharField(max_length=1, choices=STATUS, default='P')
     datetime=models.DateTimeField(auto_now_add=True)
+    parent_transaction=models.ForeignKey('self', on_delete=models.PROTECT)
     history =HistoricalRecords()
 
 class UserBalance(models.Model):
