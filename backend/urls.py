@@ -4,12 +4,15 @@ from django.urls import include, path
 from . import views
 
 router = routers.DefaultRouter()
-router.register(r'Transactions', views.TransactionViewset)
+#router.register(r'Transactions', views.TransactionViewset)
 
 urlpatterns = [
     path('', include(router.urls)),
     path('deposit/', views.Deposit),
     path('withdraw/', views.Withdraw),
     path('release-withdraw/', views.ReleaseWithdraw),
+    path('release-blocked/', views.ReleaseBlocked),
     path('transfer/', views.Transfer),
+    path('get-balance/',views.GetBalance),
+    path('get-history/',views.UserHistory),
 ]

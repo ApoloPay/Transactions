@@ -18,12 +18,12 @@ def blockAvailableFunds(user,asset,amount):
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
     
-def ReleaseBlockedFunds(user_origin,user_destination,amount,asset,parent_transaction):
+def ReleaseBlockedFunds(user_origin,user_destination,amount,asset,parent_transaction=None):
     balance_origin = UserBalance.objects.get(user=user_origin,asset=asset)
     balance_destination = UserBalance.objects.get(user=user_destination,asset=asset)
     balance_origin.blocked = balance_origin.blocked - amount
     balance_destination.available = balance_destination.available + amount
-    new_transaction = Transaction(user_id=user_destination,asset_id=asset,amount=amount,type='transfer',description='release blocked funds',parent_transaction=parent_transaction)
+    new_transaction = Transaction(user_id=user_destination,asset_id=asset,amount=amount,type='Release',description='release blocked funds',parent_transaction=parent_transaction)
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
 
@@ -34,6 +34,7 @@ def transfer(user_origin,user_destination,amount,asset):
     origen = blockAvailableFunds(user_origin,asset,amount)
     ##release blocked funds to destination
     trx = ReleaseBlockedFunds(user_origin,user_destination,amount,asset,origen)
+    trx.save()
     return TransactionSerializer(instance=trx).data
 
 ##deposit method
@@ -62,3 +63,29 @@ def releaseWithdraw(origen):
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
     
+def getBalance(user):
+    assert UserBalance.objects.filter(user=user).count()>0, 'Sorry, no info for you'
+    return UserBalanceSerializer(instance=UserBalance.objects.get(user=user)).data
+
+def getUserHistory(user,start_date,end_date,type,page):
+    start_date = datetime.datetime.strptime(start_date)
+    end_date = datetime.datetime.strptime(end_date+' 23:59:59', '%d/%m/%Y %H:%M:%S')
+    data=[]
+    if(type=='all'):
+        transactions=Transaction.objects.filter(user=user,datetime__range=(start_date,end_date)).order_by('-datetime')
+    else:
+        transactions=Transaction.objects.filter(user=user,datetime__range=(start_date,end_date),type=type).order_by('-datetime')
+    for transaction in transactions:
+         data.append(TransactionSerializer(instance=transaction).data)
+    records = len(data)
+    total_pages = math.floor(records/10)+1
+    data.sort(key=lambda r: r['datetime'], reverse=True)
+    to_return = [data[i:i+10] for i in range(0, len(data), 10)]
+    if (records >0):
+        if (request.data['pagina'] <= total_pages and page > 0):
+            data_to_return = to_return[page-1]
+        else:
+            data_to_return = []
+    else:
+        data_to_return = []
+    return {'total_pages':total_pages,'total_records':records,'current_page':page,'data':data_to_return} 

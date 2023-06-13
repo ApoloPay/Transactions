@@ -49,3 +49,32 @@ def Withdraw(request):
         return Response(transfer(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
     except Exception as e:
         return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def ReleaseBlocked(request):
+    try:
+        return Response(ReleaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def GetBalance(request):
+    try:
+        return Response(getBalance(request.data["user"]), status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+#############Historical
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def UserHistory(request):
+    try:
+        return Response(getUserHistory(request.data["user"],request.data["start_date"],request.data["end_date"],request.data["type"],request.data["page"]), status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
