@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view,permission_classes
 from .serializers import * 
 from django.views.decorators.csrf import csrf_exempt
 from .use_cases import *
+import datetime
 #Generics
 class TransactionViewset(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
@@ -18,10 +19,7 @@ class TransactionViewset(viewsets.ModelViewSet):
 @csrf_exempt
 @permission_classes([AllowAny])
 def Deposit(request):
-    try:
-        return Response(deposit(request.data["user"],request.data["asset"],request.data["amount"],request.data["id_transaction"],request.data["description"]), status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response(deposit(request.data["user"],request.data["asset"],request.data["amount"],request.data["id_transaction"],request.data["description"]), status=status.HTTP_200_OK)
 
 @api_view(["POST"])
 @csrf_exempt
@@ -68,13 +66,15 @@ def GetBalance(request):
     except Exception as e:
         return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def CreateBalance(request):
+    return Response(createBalance(request.data["user"]), status=status.HTTP_200_OK)
 
 #############Historical
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes([AllowAny])
 def UserHistory(request):
-    try:
-        return Response(getUserHistory(request.data["user"],request.data["start_date"],request.data["end_date"],request.data["type"],request.data["page"]), status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    return Response(getUserHistory(request.data["user"],request.data["start_date"],request.data["end_date"],request.data["type"],request.data["page"]), status=status.HTTP_200_OK)

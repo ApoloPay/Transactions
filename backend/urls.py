@@ -13,6 +13,7 @@ urlpatterns = [
     path('release-withdraw/', views.ReleaseWithdraw),
     path('release-blocked/', views.ReleaseBlocked),
     path('transfer/', views.Transfer),
+    path('create-balance/',views.CreateBalance),
     path('get-balance/',views.GetBalance),
     path('get-history/',views.UserHistory),
 ]

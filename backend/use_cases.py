@@ -1,9 +1,19 @@
 from .models import * 
 from .serializers import * 
 from django.db import transaction
-
+import requests as external_requests
+import datetime
+import math
 def checkBalance(user):
     return UserBalanceSerializer(instance=UserBalance.objects.get(user_id=user)).data
+
+def createBalance(user):
+    r = external_requests.post('http://157.230.11.136:5003/control-center/api/asset/', json={})
+    rdata = r.json()
+    for asset in rdata:
+        balance, created = UserBalance.objects.get_or_create(user=user,asset=asset["id"])
+        balance.save()
+    return 'Created'
 
 def checkAvailable(user,asset,amount):
     return True if UserBalance.objects.get(user_id=user,asset=asset).available >= amount else False 
@@ -39,11 +49,12 @@ def transfer(user_origin,user_destination,amount,asset):
 
 ##deposit method
 def deposit(user,asset,amount,id_transaction,description):
+    if(id_transaction):
+        assert Transaction.objects.filter(user=user,asset=asset,id_transaction=id_transaction).count() == 0 , 'id transaction repeated'
     balance_destination = UserBalance.objects.get(user=user,asset=asset)
     balance_destination.available += amount
     balance_destination.save()
-    assert Transaction.objects.filter(id_transaction=id_transaction).count()>0, 'id transaction repeated'
-    new_transaction = Transaction(user_id=user,asset_id=asset,amount=amount,type='deposit',description=description)
+    new_transaction = Transaction(user=user,asset=asset,amount=amount,type='deposit',description=description,id_transaction=id_transaction)
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
 
@@ -68,7 +79,7 @@ def getBalance(user):
     return UserBalanceSerializer(instance=UserBalance.objects.get(user=user)).data
 
 def getUserHistory(user,start_date,end_date,type,page):
-    start_date = datetime.datetime.strptime(start_date)
+    start_date = datetime.datetime.strptime(start_date, '%d/%m/%Y')
     end_date = datetime.datetime.strptime(end_date+' 23:59:59', '%d/%m/%Y %H:%M:%S')
     data=[]
     if(type=='all'):
@@ -82,7 +93,7 @@ def getUserHistory(user,start_date,end_date,type,page):
     data.sort(key=lambda r: r['datetime'], reverse=True)
     to_return = [data[i:i+10] for i in range(0, len(data), 10)]
     if (records >0):
-        if (request.data['pagina'] <= total_pages and page > 0):
+        if (page <= total_pages and page > 0):
             data_to_return = to_return[page-1]
         else:
             data_to_return = []
