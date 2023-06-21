@@ -78,3 +78,5 @@ def CreateBalance(request):
 @permission_classes([AllowAny])
 def UserHistory(request):
     return Response(getUserHistory(request.data["user"],request.data["start_date"],request.data["end_date"],request.data["type"],request.data["page"]), status=status.HTTP_200_OK)
+
+

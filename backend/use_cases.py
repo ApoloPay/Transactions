@@ -45,7 +45,7 @@ def transfer(user_origin,user_destination,amount,asset):
     ##release blocked funds to destination
     trx = ReleaseBlockedFunds(user_origin,user_destination,amount,asset,origen)
     trx.save()
-    return TransactionSerializer(instance=trx).data
+    return TransactionSerializer(instance=origen).data
 
 ##deposit method
 def deposit(user,asset,amount,id_transaction,description):
@@ -100,3 +100,4 @@ def getUserHistory(user,start_date,end_date,type,page):
     else:
         data_to_return = []
     return {'total_pages':total_pages,'total_records':records,'current_page':page,'data':data_to_return} 
+
