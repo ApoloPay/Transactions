@@ -69,6 +69,15 @@ def GetBalance(request):
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes([AllowAny])
+def GetAssetBalance(request):
+    try:
+        return Response(getAssetBalance(request.data["user"],request.data["asset"]), status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
 def CreateBalance(request):
     return Response(createBalance(request.data["user"]), status=status.HTTP_200_OK)
 
@@ -79,4 +88,14 @@ def CreateBalance(request):
 def UserHistory(request):
     return Response(getUserHistory(request.data["user"],request.data["start_date"],request.data["end_date"],request.data["type"],request.data["page"]), status=status.HTTP_200_OK)
 
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def BlockAvailableFunds(request):
+    return Response(blockAvailableFunds(request.data["user"],request.data["asset"],request.data["amount"]), status=status.HTTP_200_OK)
 
+@api_view(["POST"])
+@csrf_exempt
+@permission_classes([AllowAny])
+def ReleaseBlockedFunds(request):
+    return Response(ReleaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)

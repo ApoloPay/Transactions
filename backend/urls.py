@@ -12,8 +12,11 @@ urlpatterns = [
     path('withdraw/', views.Withdraw),
     path('release-withdraw/', views.ReleaseWithdraw),
     path('release-blocked/', views.ReleaseBlocked),
+    path('block-available-funds/', views.BlockAvailableFunds),
+    path('release-blocked-funds/', views.ReleaseBlockedFunds),
     path('transfer/', views.Transfer),
     path('create-balance/',views.CreateBalance),
     path('get-balance/',views.GetBalance),
+    path('get-asset-balance/',views.GetAssetBalance),
     path('get-history/',views.UserHistory),
 ]

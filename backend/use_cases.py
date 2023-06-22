@@ -78,6 +78,10 @@ def getBalance(user):
     assert UserBalance.objects.filter(user=user).count()>0, 'Sorry, no info for you'
     return UserBalanceSerializer(instance=UserBalance.objects.get(user=user)).data
 
+def getAssetBalance(user,asset):
+    assert UserBalance.objects.filter(user=user,asset=asset).count()>0, 'Sorry, no info for you'
+    return UserBalanceSerializer(instance=UserBalance.objects.get(user=user,asset=asset)).data
+
 def getUserHistory(user,start_date,end_date,type,page):
     start_date = datetime.datetime.strptime(start_date, '%d/%m/%Y')
     end_date = datetime.datetime.strptime(end_date+' 23:59:59', '%d/%m/%Y %H:%M:%S')
