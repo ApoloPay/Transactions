@@ -9,6 +9,7 @@ from .serializers import *
 from django.views.decorators.csrf import csrf_exempt
 from .use_cases import *
 import datetime
+from decimal import Decimal
 #Generics
 class TransactionViewset(viewsets.ModelViewSet):
     permission_classes = [AllowAny]
@@ -19,14 +20,14 @@ class TransactionViewset(viewsets.ModelViewSet):
 @csrf_exempt
 @permission_classes([AllowAny])
 def Deposit(request):
-    return Response(deposit(request.data["user"],request.data["asset"],request.data["amount"],request.data["id_transaction"],request.data["description"]), status=status.HTTP_200_OK)
+    return Response(deposit(request.data["user"],request.data["asset"],Decimal(request.data["amount"]),request.data["id_transaction"],request.data["description"]), status=status.HTTP_200_OK)
 
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes([AllowAny])
 def Transfer(request):
     try:
-        return Response(transfer(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
+        return Response(transfer(request.data["user_origin"],request.data["user_destination"],Decimal(request.data["amount"]),request.data["asset"]), status=status.HTTP_200_OK)
     except Exception as e:
         return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -43,17 +44,17 @@ def ReleaseWithdraw(request):
 @csrf_exempt
 @permission_classes([AllowAny])
 def Withdraw(request):
-    try:
-        return Response(transfer(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    #try:
+        return Response(startWithdraw(request.data["user"],request.data["asset"],Decimal(request.data["amount"]),request.data["wallet"]), status=status.HTTP_200_OK)
+    #except Exception as e:
+     #   return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes([AllowAny])
 def ReleaseBlocked(request):
     try:
-        return Response(ReleaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
+        return Response(ReleaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],Decimal(request.data["amount"]),request.data["asset"]), status=status.HTTP_200_OK)
     except Exception as e:
         return Response(e,status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -92,10 +93,10 @@ def UserHistory(request):
 @csrf_exempt
 @permission_classes([AllowAny])
 def BlockAvailableFunds(request):
-    return Response(blockAvailableFunds(request.data["user"],request.data["asset"],request.data["amount"]), status=status.HTTP_200_OK)
+    return Response(blockAvailableFunds(request.data["user"],request.data["asset"],Decimal(request.data["amount"]),id_transaction=request.data["id_transaction"]), status=status.HTTP_200_OK)
 
 @api_view(["POST"])
 @csrf_exempt
 @permission_classes([AllowAny])
 def ReleaseBlockedFunds(request):
-    return Response(ReleaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],request.data["amount"],request.data["asset"]), status=status.HTTP_200_OK)
+    return Response(releaseBlockedFunds(request.data["user_origin"],request.data["user_destination"],Decimal(request.data["amount"]),request.data["asset"],id_transaction=request.data["id_transaction"]), status=status.HTTP_200_OK)

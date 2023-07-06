@@ -104,7 +104,7 @@ DATABASES = {
          'NAME': 'apolo_microtransaction',
          'USER':'postgres',
          'PASSWORD': 'YK57GOo0LBO2ULM6gaomo3Jz7W1LyLEj',
-         'HOST': 'localhost',
+         'HOST': '157.230.11.136',
     }
 }
 
