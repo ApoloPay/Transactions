@@ -11,6 +11,7 @@ class Transaction(models.Model):
     user=models.TextField(default=None, null=True,blank =False)
     asset=models.TextField(default=None, null=True,blank =False)
     amount=models.DecimalField(max_digits=20,decimal_places = 4,default=0.0)
+    origin=models.TextField(default=None, null=True,blank =False)
     type=models.TextField(default=None, null=True,blank =False)
     description=models.TextField(default=None, null=False,blank =True)
     status =models.CharField(max_length=1, choices=STATUS, default='P')

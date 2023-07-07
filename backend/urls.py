@@ -19,4 +19,5 @@ urlpatterns = [
     path('get-balance/',views.GetBalance),
     path('get-asset-balance/',views.GetAssetBalance),
     path('get-history/',views.UserHistory),
+    path('get-history-detail/',views.GetHistoryDetail),
 ]

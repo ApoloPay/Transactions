@@ -5,10 +5,10 @@ import requests as external_requests
 import datetime
 import math
 def checkBalance(user):
-    return UserBalanceSerializer(instance=UserBalance.objects.get(user_id=user)).data
+    return UserBalanceSerializer(instance=UserBalance.objects.get(user=user)).data
 
 def createBalance(user):
-    r = external_requests.post('http://157.230.11.136:5003/control-center/api/asset/', json={})
+    r = external_requests.post('http://control-center:6003/api/asset/', json={})
     rdata = r.json()
     for asset in rdata:
         balance, created = UserBalance.objects.get_or_create(user=user,asset=asset["id"])
@@ -16,64 +16,88 @@ def createBalance(user):
     return 'Created'
 
 def checkAvailable(user,asset,amount):
-    return True if UserBalance.objects.get(user_id=user,asset=asset).available >= amount else False 
+    return True if UserBalance.objects.get(user=user,asset=asset).available >= amount else False 
 
-def blockAvailableFunds(user,asset,amount):
-    assert checkAvailable(user,asset,amount), 'insufficient funds'
+def checkBlocked(user,asset,amount):
+    return True if UserBalance.objects.get(user=user,asset=asset).blocked >= amount else False
+
+def blockAvailableFunds(user,asset,amount,origin='P2P',id_transaction=None):
+    assert checkAvailable(user,asset,amount), 'insufficient available funds'
     balance = UserBalance.objects.get(user=user,asset=asset)
-    balance.available -= amount
-    balance.blocked +=amount
+    balance.available =  balance.available - amount
+    balance.blocked = balance.blocked + amount
     balance.save()
-    new_transaction = Transaction(user_id=user,asset_id=asset,amount=amount,type='blocked',description='blocked funds')
+    new_transaction = Transaction(user=user,asset=asset,amount=amount,type='Blocked',description='blocked funds',origin=origin,id_transaction=id_transaction)
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
     
-def ReleaseBlockedFunds(user_origin,user_destination,amount,asset,parent_transaction=None):
+def releaseBlockedFunds(user_origin,user_destination,amount,asset,parent_transaction=None,origin='P2P',id_transaction=None):
+    assert checkBlocked(user_origin,asset,amount), 'insufficient blocked funds'
     balance_origin = UserBalance.objects.get(user=user_origin,asset=asset)
-    balance_destination = UserBalance.objects.get(user=user_destination,asset=asset)
     balance_origin.blocked = balance_origin.blocked - amount
+    balance_origin.save()
+    balance_destination = UserBalance.objects.get(user=user_destination,asset=asset)
     balance_destination.available = balance_destination.available + amount
-    new_transaction = Transaction(user_id=user_destination,asset_id=asset,amount=amount,type='Release',description='release blocked funds',parent_transaction=parent_transaction)
+    balance_destination.save()
+    if(parent_transaction):
+        p_transaction=Transaction.objects.get(id=parent_transaction)
+        new_transaction = Transaction(user=user_destination,asset=asset,amount=amount,type='Release',description='release blocked funds',parent_transaction=p_transaction,origin=p_transaction.origin)
+    else:
+        new_transaction = Transaction(user=user_destination,asset=asset,amount=amount,type='Release',description='release blocked funds',origin=origin,id_transaction=id_transaction)
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
 
 ##transfer method
 @transaction.atomic
 def transfer(user_origin,user_destination,amount,asset):
-    ##block user_origin
-    origen = blockAvailableFunds(user_origin,asset,amount)
-    ##release blocked funds to destination
-    trx = ReleaseBlockedFunds(user_origin,user_destination,amount,asset,origen)
-    trx.save()
-    return TransactionSerializer(instance=origen).data
+    try:
+        origen = blockAvailableFunds(user_origin,asset,amount,origin='Transfer')
+    except Exception as e:
+        return str(e)
+    try:
+        trx = releaseBlockedFunds(user_origin,user_destination,amount,asset,origen["id"],origin='Transfer')
+    except Exception as e:
+        return str(e)
+    return TransactionSerializer(instance=Transaction.objects.get(id=origen["id"])).data
 
 ##deposit method
-def deposit(user,asset,amount,id_transaction,description):
+def deposit(user,asset,amount,id_transaction,description,origin='Tron-Service'):
     if(id_transaction):
         assert Transaction.objects.filter(user=user,asset=asset,id_transaction=id_transaction).count() == 0 , 'id transaction repeated'
-    balance_destination = UserBalance.objects.get(user=user,asset=asset)
-    balance_destination.available += amount
-    balance_destination.save()
-    new_transaction = Transaction(user=user,asset=asset,amount=amount,type='deposit',description=description,id_transaction=id_transaction)
-    new_transaction.save()
-    return TransactionSerializer(instance=new_transaction).data
+        balance_destination = UserBalance.objects.get(user=user,asset=asset)
+        balance_destination.available += amount
+        balance_destination.save()
+        new_transaction = Transaction(user=user,asset=asset,amount=amount,type='Deposit',description=description,id_transaction=id_transaction,origin=origin)
+        new_transaction.save()
+        return TransactionSerializer(instance=new_transaction).data
+    else:
+        raise "id transaction required"
 
-##start withdraw
-def blockWithdraw(user,asset,amount):
-    origen = blockAvailableFunds(user,asset,amount)
-    return TransactionSerializer(instance=origen).data
+##Process withdraw
+@transaction.atomic
+def startWithdraw(user,asset,amount,address):
+    if(asset=="1"):
+        origen = blockAvailableFunds(user,asset,amount,origin='Withdraw')
+        json = {"userid": str(user),"toaddress": address,"amount": float(amount), "token": str(asset)}
+        resp = external_requests.post('http://micro-tron:6007/micro-service-tron/account/withdraw/', json=json)
+        if resp.status_code == 200:
+            return releaseWithdraw(origen)
+        else:
+            return "ups... some went wrong"
+    else:
+        return "asset in develop"
 
 ##release withdraw
 @transaction.atomic
 def releaseWithdraw(origen):
-    parent_transaction = Transaction.objects.get(id=origen)
+    parent_transaction = Transaction.objects.get(id=origen["id"])
     balance_destination = UserBalance.objects.get(user=parent_transaction.user,asset=parent_transaction.asset)
     balance_destination.blocked -= parent_transaction.amount
     balance_destination.save()
-    new_transaction = Transaction(user_id=parent_transaction.user,asset_id=parent_transaction.asset,amount=parent_transaction.amount,id_transaction=str(origen),type='release withdraw',description=parent_transaction.description,parent_transaction=parent_transaction)
+    new_transaction = Transaction(user=parent_transaction.user,asset=parent_transaction.asset,amount=parent_transaction.amount,type='Release',description=parent_transaction.description,parent_transaction=parent_transaction,origin=parent_transaction.origin)
     new_transaction.save()
     return TransactionSerializer(instance=new_transaction).data
-    
+
 def getBalance(user):
     assert UserBalance.objects.filter(user=user).count()>0, 'Sorry, no info for you'
     return UserBalanceSerializer(instance=UserBalance.objects.get(user=user)).data
@@ -82,16 +106,20 @@ def getAssetBalance(user,asset):
     assert UserBalance.objects.filter(user=user,asset=asset).count()>0, 'Sorry, no info for you'
     return UserBalanceSerializer(instance=UserBalance.objects.get(user=user,asset=asset)).data
 
-def getUserHistory(user,start_date,end_date,type,page):
-    start_date = datetime.datetime.strptime(start_date, '%d/%m/%Y')
-    end_date = datetime.datetime.strptime(end_date+' 23:59:59', '%d/%m/%Y %H:%M:%S')
+def getUserHistory(user,start_date,end_date,page,type='all',origin='all'):
+    filtro = {"user":user}
+    if(start_date and end_date):
+        filtro = {"user":user,"datetime__range":(datetime.datetime.strptime(start_date, '%d/%m/%Y'),datetime.datetime.strptime(end_date+' 23:59:59', '%d/%m/%Y %H:%M:%S'))}
     data=[]
-    if(type=='all'):
-        transactions=Transaction.objects.filter(user=user,datetime__range=(start_date,end_date)).order_by('-datetime')
+    if (type=='all'):
+        filtro = filtro|(origin if origin != 'all'  else {})
+    elif type =='incoming':
+        filtro["origin__in"] = ['P2P','Tron-Service','Transfer']
+        filtro["type__in"] = ['Deposit','Release']
     else:
-        transactions=Transaction.objects.filter(user=user,datetime__range=(start_date,end_date),type=type).order_by('-datetime')
-    for transaction in transactions:
-         data.append(TransactionSerializer(instance=transaction).data)
+        filtro["origin__in"] = ['P2P','Withdraw','Transfer']
+        filtro["type__in"] = ['Blocked']
+    data = TransactionSerializer(instance=Transaction.objects.filter(**filtro).order_by('-datetime'),many=True).data
     records = len(data)
     total_pages = math.floor(records/10)+1
     data.sort(key=lambda r: r['datetime'], reverse=True)
@@ -105,3 +133,5 @@ def getUserHistory(user,start_date,end_date,type,page):
         data_to_return = []
     return {'total_pages':total_pages,'total_records':records,'current_page':page,'data':data_to_return} 
 
+def getHistoryDetail(id_transaction):
+    return TransactionDetailSerializer(instance=Transaction.objects.get(id=id_transaction)).data
